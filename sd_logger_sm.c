@@ -101,7 +101,7 @@ void SD_Logger_Init(void) {
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			HAL_Delay(1000);
 		}
-	} while (try_u8 < 5);
+	} while ((fres !=0) && (try_u8 < 5));
 }
 //************************************************************************
 
