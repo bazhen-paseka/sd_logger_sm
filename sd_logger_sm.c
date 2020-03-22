@@ -26,7 +26,7 @@
 *							LOCAL DEFINES
 **************************************************************************
 */
-
+	#define SOFT_VERSION 			100
 /*
 **************************************************************************
 *							LOCAL CONSTANTS
@@ -58,7 +58,7 @@
 *						    GLOBAL VARIABLES
 **************************************************************************
 */
-  	  uint32_t logger_u32 = 401;
+  	  uint32_t logger_u32 = 501;
   	  FRESULT fres;
 /*
 **************************************************************************
@@ -110,8 +110,20 @@ void SD_Logger_Main(void) {
 	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 	HAL_Delay(1300);
 	logger_u32++;
-	sprintf(DataChar,"log# %d\r\n", (int)logger_u32);
+	sprintf(DataChar,"log# %04d\r\n", (int)logger_u32);
 	HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+
+
+	snprintf(DataChar, 7,"%04d\r\n", (int)logger_u32);
+	fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
+	fres += f_lseek(&USERFile, f_size(&USERFile));
+
+	if (fres == FR_OK)
+	{
+		f_printf(&USERFile, "%s", DataChar);	/* Write to file */
+//		_sd->file_size = f_size(&USERFile);
+		f_close(&USERFile);	/* Close file */
+	}
 }
 //************************************************************************
 
