@@ -26,7 +26,7 @@
 */
 	#include "stm32f1xx_hal.h"
 	#include "gpio.h"
-	#include "tim.h"
+	// #include "tim.h"
 	#include "usart.h"
 	#include "stdio.h"
 	#include <string.h>
@@ -35,7 +35,7 @@
 *								    DEFINES
 **************************************************************************
 */
-	#define SOFT_VERSION 			000
+	#define SOFT_VERSION 			123
 
 /*
 **************************************************************************
