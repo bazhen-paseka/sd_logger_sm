@@ -26,16 +26,21 @@
 */
 	#include "stm32f1xx_hal.h"
 	#include "gpio.h"
-	#include "tim.h"
 	#include "usart.h"
 	#include "stdio.h"
 	#include <string.h>
+	#include "fatfs.h"
+	#include "spi.h"
+	#include "SD_Logger_f103_config.h"
+	//#include "tim.h"
+	//#include "iwdg.h"
+	//#include "ringbuffer_dma.h"
+
 /*
 **************************************************************************
 *								    DEFINES
 **************************************************************************
 */
-	#define SOFT_VERSION 			000
 
 /*
 **************************************************************************
