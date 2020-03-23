@@ -93,7 +93,9 @@ void SD_Logger_Init(void) {
 	I2Cdev_init(&hi2c1);
 	I2C_ScanBusFlow(&hi2c1, &huart1);
 
-	Set_Date_and_Time(&DateSt, &TimeSt);
+#if (SET_RTC_TIM_AND_DATE == 1)
+	Set_Date_and_Time_to_DS3231(0x20, 0x03, 0x23, 0x15, 0x10, 0x00);
+#endif
 
 	ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
 	ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
@@ -133,10 +135,23 @@ void SD_Logger_Main(void) {
 			second_count_u32  = 0;
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
 			logger_u32++;
-			sprintf(DataChar,"log# %04d; ", (int)logger_u32 );
+
+			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
+			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
+
+			//ds3231_PrintTime(&TimeSt, &huart1);
+			//ds3231_PrintDate(&DateSt, &huart1);
+
+			snprintf(DataChar, 27,"%04d\t%02d\t%02d\t%02d\t%02d\t%02d\t%04d\r\n",
+					(int)(DateSt.Year + 2000),
+					(int)DateSt.Month,
+					(int)DateSt.Date,
+					(int)TimeSt.Hours,
+					(int)TimeSt.Minutes,
+					(int)TimeSt.Seconds,
+					(int)logger_u32);
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
-			snprintf(DataChar, 7,"%04d\r\n", (int)logger_u32);
 			fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
 			fres += f_lseek(&USERFile, f_size(&USERFile));
 
@@ -150,12 +165,6 @@ void SD_Logger_Main(void) {
 				sprintf(DataChar,"write_SD - Error; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
-
-			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
-			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
-
-			ds3231_PrintTime(&TimeSt, &huart1);
-			ds3231_PrintDate(&DateSt, &huart1);
 
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
