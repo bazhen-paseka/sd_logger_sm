@@ -53,7 +53,6 @@
 *						    GLOBAL VARIABLES
 **************************************************************************
 */
-		uint32_t	logger_u32 = 3000;
 		FRESULT		fres;
 		uint8_t		button_download_pressed = 0;
 		uint8_t		time_count_update_flag = 0;
@@ -117,19 +116,19 @@ void SD_Logger_Init(void) {
 		}
 	} while ((fres !=0) && (try_u8 < 3));
 
-	ds3231_Alarm1_SetSeconds(ADR_I2C_DS3231, 0x00);
-	//ds3231_Alarm1_SetEverySeconds(ADR_I2C_DS3231);
+	//ds3231_Alarm1_SetSeconds(ADR_I2C_DS3231, 0x00);
+	ds3231_Alarm1_SetEverySeconds(ADR_I2C_DS3231);
 	ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 
-	HAL_TIM_Base_Start(&htim4);
-	HAL_TIM_Base_Start_IT(&htim4);
+	//HAL_TIM_Base_Start(&htim4);
+	//HAL_TIM_Base_Start_IT(&htim4);
 }
 //************************************************************************
 
 void SD_Logger_Main(void) {
 	char DataChar[100];
 	if (time_count_update_flag == 1) {
-		HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+		//HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 		time_count_update_flag  = 0;
 		ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 		second_count_u32++;
@@ -137,7 +136,6 @@ void SD_Logger_Main(void) {
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
-			logger_u32++;
 
 			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
 			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
@@ -145,14 +143,10 @@ void SD_Logger_Main(void) {
 			//ds3231_PrintTime(&TimeSt, &huart1);
 			//ds3231_PrintDate(&DateSt, &huart1);
 
-			snprintf(DataChar, 27,"%04d\t%02d\t%02d\t%02d\t%02d\t%02d\t%04d\r\n",
-					(int)(DateSt.Year + 2000),
-					(int)DateSt.Month,
-					(int)DateSt.Date,
-					(int)TimeSt.Hours,
-					(int)TimeSt.Minutes,
-					(int)TimeSt.Seconds,
-					(int)logger_u32);
+			snprintf(DataChar, 30,"%04d\t%02d\t%02d\t%02d\t%02d\t%02d\t%04d\r\n",
+					(int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date,
+					(int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds,
+					(int)(100000*DateSt.Year + 10000*DateSt.Month + 10000*DateSt.Date + 10000*TimeSt.Hours + 100*TimeSt.Minutes + TimeSt.Seconds));
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
 			fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
@@ -168,7 +162,6 @@ void SD_Logger_Main(void) {
 				sprintf(DataChar,"write_SD - Error; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
-
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
 	}

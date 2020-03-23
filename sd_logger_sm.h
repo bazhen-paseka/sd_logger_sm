@@ -32,7 +32,7 @@
 	#include "fatfs.h"
 	#include "spi.h"
 	#include "SD_Logger_f103_config.h"
-	#include "tim.h"
+	//#include "tim.h"
 	//#include "iwdg.h"
 	//#include "ringbuffer_dma.h"
 	#include "ds3231_sm.h"
