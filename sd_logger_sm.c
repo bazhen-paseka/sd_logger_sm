@@ -99,6 +99,8 @@ void SD_Logger_Init(void) {
 
 	FATFS_SPI_Init(&hspi1);	/* Initialize SD Card low level SPI driver */
 
+	HAL_IWDG_Refresh(&hiwdg);
+
 	static uint8_t try_u8;
 	do {
 		fres = f_mount(&USERFatFS, "", 1);	/* try to mount SDCARD */
@@ -122,20 +124,23 @@ void SD_Logger_Init(void) {
 
 	//HAL_TIM_Base_Start(&htim4);
 	//HAL_TIM_Base_Start_IT(&htim4);
+	HAL_IWDG_Refresh(&hiwdg);
 }
 //************************************************************************
 
 void SD_Logger_Main(void) {
 	char DataChar[100];
 	if (time_count_update_flag == 1) {
-		//HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+		HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+		HAL_IWDG_Refresh(&hiwdg);
+
 		time_count_update_flag  = 0;
 		ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 		second_count_u32++;
 
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
-			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
+			//HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
 
 			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
 			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
@@ -162,7 +167,7 @@ void SD_Logger_Main(void) {
 				sprintf(DataChar,"write_SD - Error; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
-			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
+			//HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
 	}
 
