@@ -41,7 +41,8 @@
 *								    DEFINES
 **************************************************************************
 */
-		#define SOFT_VERSION 			110
+	#define SOFT_VERSION		110
+	#define	SECOND				10
 /*
 **************************************************************************
 *								   DATA TYPES
@@ -67,6 +68,6 @@
 */
 	void SD_Logger_Init(void);
 	void SD_Logger_Main(void);
-	void Set_button_download_status(uint8_t _new_button_status_u8);
-	void Set_time_write_to_sd_flag(uint8_t _new_flag_u8);
+	void Set_button_download_pressed(uint8_t _new_button_status_u8);
+	void Set_time_count_update_flag(uint8_t _new_flag_u8);
 #endif /* SD_LOGGER_SM_H_INCLUDED */
