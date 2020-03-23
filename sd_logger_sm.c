@@ -58,6 +58,15 @@
   	  uint8_t	button_download_pressed = 0;
   	  uint8_t	time_count_update_flag = 0;
   	  uint32_t	second_count_u32 = 0;
+
+  	volatile uint8_t ds3231_alarm_u8 = 0 ;
+	//char DataChar[100];
+	uint32_t counter_u32 = 0;
+
+	#define ADR_I2C_DS3231 0x68
+	RTC_TimeTypeDef TimeSt;
+	RTC_DateTypeDef DateSt;
+
 /*
 **************************************************************************
 *                        LOCAL FUNCTION PROTOTYPES
@@ -80,6 +89,16 @@ void SD_Logger_Init(void) {
 	sprintf(DataChar,"\r\n\tSD-card logger 2020-march-22 v%d.%d.%d \r\n\tUART1 for debug on speed 115200/8-N-1\r\n\r\n",
 			soft_version_arr_int[0], soft_version_arr_int[1], soft_version_arr_int[2]);
 	HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+
+	I2Cdev_init(&hi2c1);
+	I2C_ScanBusFlow(&hi2c1, &huart1);
+
+	Set_Date_and_Time(&DateSt, &TimeSt);
+
+	ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
+	ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
+	ds3231_PrintTime(&TimeSt, &huart1);
+	ds3231_PrintDate(&DateSt, &huart1);
 
 	FATFS_SPI_Init(&hspi1);	/* Initialize SD Card low level SPI driver */
 
@@ -125,12 +144,19 @@ void SD_Logger_Main(void) {
 				f_printf(&USERFile, "%s", DataChar);	/* Write to file */
 				uint32_t file_size_u32 = f_size(&USERFile);
 				f_close(&USERFile);	/* Close file */
-				sprintf(DataChar,"write_SD - Ok; file_size=%d;\r\n", (int)file_size_u32);
+				sprintf(DataChar,"write_SD - Ok; file_size=%d; ", (int)file_size_u32);
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			} else {
-				sprintf(DataChar,"write_SD - Error;\r\n");
+				sprintf(DataChar,"write_SD - Error; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
+
+			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
+			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
+
+			ds3231_PrintTime(&TimeSt, &huart1);
+			ds3231_PrintDate(&DateSt, &huart1);
+
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
 	}
