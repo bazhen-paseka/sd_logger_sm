@@ -26,27 +26,21 @@
 *							LOCAL DEFINES
 **************************************************************************
 */
-	#define SOFT_VERSION 			100
 /*
 **************************************************************************
 *							LOCAL CONSTANTS
 **************************************************************************
 */
-
-
 /*
 **************************************************************************
 *						    LOCAL DATA TYPES
 **************************************************************************
 */
-
-
 /*
 **************************************************************************
 *							  LOCAL TABLES
 **************************************************************************
 */
-
 /*
 **************************************************************************
 *								 MACRO'S
@@ -58,9 +52,10 @@
 *						    GLOBAL VARIABLES
 **************************************************************************
 */
-  	  uint32_t logger_u32 = 501;
-  	  FRESULT fres;
+  	  uint32_t	logger_u32 = 3000;
+  	  FRESULT	fres;
   	  uint8_t	button_download_status = 0;
+  	  uint8_t	time_write_to_sd_flag = 0;
 /*
 **************************************************************************
 *                        LOCAL FUNCTION PROTOTYPES
@@ -103,38 +98,58 @@ void SD_Logger_Init(void) {
 			HAL_Delay(1000);
 		}
 	} while ((fres !=0) && (try_u8 < 3));
+
+	HAL_TIM_Base_Start(&htim4);
+	HAL_TIM_Base_Start_IT(&htim4);
 }
 //************************************************************************
 
 void SD_Logger_Main(void) {
 	char DataChar[100];
-	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-	HAL_Delay(1300);
-	logger_u32++;
-	sprintf(DataChar,"log# %04d; ", (int)logger_u32 );
-	HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
-
-	snprintf(DataChar, 7,"%04d\r\n", (int)logger_u32);
-	fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
-	fres += f_lseek(&USERFile, f_size(&USERFile));
-
-	if (fres == FR_OK) 	{
-		f_printf(&USERFile, "%s", DataChar);	/* Write to file */
-//		_sd->file_size = f_size(&USERFile);
-		f_close(&USERFile);	/* Close file */
-		sprintf(DataChar,"write to SD - Ok;\r\n");
-				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
-	} else {
-		sprintf(DataChar,"write to SD - Error;\r\n");
+	if (time_write_to_sd_flag == 1) {
+		HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+		logger_u32++;
+		sprintf(DataChar,"log# %04d; ", (int)logger_u32 );
 		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+
+		snprintf(DataChar, 7,"%04d\r\n", (int)logger_u32);
+		fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
+		fres += f_lseek(&USERFile, f_size(&USERFile));
+
+		if (fres == FR_OK) 	{
+			f_printf(&USERFile, "%s", DataChar);	/* Write to file */
+	//		_sd->file_size = f_size(&USERFile);
+			f_close(&USERFile);	/* Close file */
+			sprintf(DataChar,"write_SD - Ok;\r\n");
+					HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		} else {
+			sprintf(DataChar,"write_SD - Error;\r\n");
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		}
+		time_write_to_sd_flag = 0;
 	}
 
 	if (button_download_status == 1) {
 		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
 		sprintf(DataChar,"Download data to port...\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
-		HAL_Delay(2000);
-		sprintf(DataChar,"...download finish.\r\n");
+
+		fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_EXISTING | FA_READ);
+		if (fres == FR_OK) {
+			sprintf(DataChar,"FR - Ok;\r\n");
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+			char buff[200];
+			while (f_gets(buff, 200, &USERFile)) {
+				sprintf(DataChar,"%s\r",buff);
+				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+			}
+			f_close(&USERFile);
+		} else {
+			sprintf(DataChar,"FR - Fail;");
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		}
+
+		sprintf(DataChar,"\r\n\t...download finish.\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 
@@ -142,9 +157,16 @@ void SD_Logger_Main(void) {
 	}
 }
 //************************************************************************
+
 void Set_button_download_status(uint8_t _new_button_status_u8) {
 	button_download_status = _new_button_status_u8;
 }
+//************************************************************************
+
+void Set_time_write_to_sd_flag(uint8_t _new_flag_u8) {
+	time_write_to_sd_flag = _new_flag_u8;
+}
+//************************************************************************
 
 /*
 **************************************************************************
