@@ -53,19 +53,15 @@
 *						    GLOBAL VARIABLES
 **************************************************************************
 */
-  	  uint32_t	logger_u32 = 3000;
-  	  FRESULT	fres;
-  	  uint8_t	button_download_pressed = 0;
-  	  uint8_t	time_count_update_flag = 0;
-  	  uint32_t	second_count_u32 = 0;
+		uint32_t	logger_u32 = 3000;
+		FRESULT		fres;
+		uint8_t		button_download_pressed = 0;
+		uint8_t		time_count_update_flag = 0;
+		uint32_t	second_count_u32 = 0;
+		uint32_t 	counter_u32 = 0;
 
-  	volatile uint8_t ds3231_alarm_u8 = 0 ;
-	//char DataChar[100];
-	uint32_t counter_u32 = 0;
-
-	#define ADR_I2C_DS3231 0x68
-	RTC_TimeTypeDef TimeSt;
-	RTC_DateTypeDef DateSt;
+		RTC_TimeTypeDef TimeSt;
+		RTC_DateTypeDef DateSt;
 
 /*
 **************************************************************************
@@ -121,6 +117,10 @@ void SD_Logger_Init(void) {
 		}
 	} while ((fres !=0) && (try_u8 < 3));
 
+	ds3231_Alarm1_SetSeconds(ADR_I2C_DS3231, 0x00);
+	//ds3231_Alarm1_SetEverySeconds(ADR_I2C_DS3231);
+	ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
+
 	HAL_TIM_Base_Start(&htim4);
 	HAL_TIM_Base_Start_IT(&htim4);
 }
@@ -129,8 +129,11 @@ void SD_Logger_Init(void) {
 void SD_Logger_Main(void) {
 	char DataChar[100];
 	if (time_count_update_flag == 1) {
+		HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 		time_count_update_flag  = 0;
+		ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 		second_count_u32++;
+
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
 			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
