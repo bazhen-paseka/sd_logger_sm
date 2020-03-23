@@ -60,6 +60,7 @@
 */
   	  uint32_t logger_u32 = 501;
   	  FRESULT fres;
+  	  uint8_t	button_download_status = 0;
 /*
 **************************************************************************
 *                        LOCAL FUNCTION PROTOTYPES
@@ -101,7 +102,7 @@ void SD_Logger_Init(void) {
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			HAL_Delay(1000);
 		}
-	} while ((fres !=0) && (try_u8 < 5));
+	} while ((fres !=0) && (try_u8 < 3));
 }
 //************************************************************************
 
@@ -110,23 +111,40 @@ void SD_Logger_Main(void) {
 	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 	HAL_Delay(1300);
 	logger_u32++;
-	sprintf(DataChar,"log# %04d\r\n", (int)logger_u32);
+	sprintf(DataChar,"log# %04d; ", (int)logger_u32 );
 	HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
-
 
 	snprintf(DataChar, 7,"%04d\r\n", (int)logger_u32);
 	fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
 	fres += f_lseek(&USERFile, f_size(&USERFile));
 
-	if (fres == FR_OK)
-	{
+	if (fres == FR_OK) 	{
 		f_printf(&USERFile, "%s", DataChar);	/* Write to file */
 //		_sd->file_size = f_size(&USERFile);
 		f_close(&USERFile);	/* Close file */
+		sprintf(DataChar,"write to SD - Ok;\r\n");
+				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+	} else {
+		sprintf(DataChar,"write to SD - Error;\r\n");
+		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+	}
+
+	if (button_download_status == 1) {
+		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
+		sprintf(DataChar,"Download data to port...\r\n");
+		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		HAL_Delay(2000);
+		sprintf(DataChar,"...download finish.\r\n");
+		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
+
+		button_download_status = 0;
 	}
 }
 //************************************************************************
-
+void Set_button_download_status(uint8_t _new_button_status_u8) {
+	button_download_status = _new_button_status_u8;
+}
 
 /*
 **************************************************************************

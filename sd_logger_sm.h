@@ -67,5 +67,6 @@
 */
 	void SD_Logger_Init(void);
 	void SD_Logger_Main(void);
+	void Set_button_download_status(uint8_t _new_button_status_u8);
 
 #endif /* SD_LOGGER_SM_H_INCLUDED */
