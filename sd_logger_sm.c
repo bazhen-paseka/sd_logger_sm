@@ -99,6 +99,8 @@ void SD_Logger_Init(void) {
 
 	FATFS_SPI_Init(&hspi1);	/* Initialize SD Card low level SPI driver */
 
+	HAL_IWDG_Refresh(&hiwdg);
+
 	static uint8_t try_u8;
 	do {
 		fres = f_mount(&USERFatFS, "", 1);	/* try to mount SDCARD */
@@ -122,31 +124,49 @@ void SD_Logger_Init(void) {
 
 	//HAL_TIM_Base_Start(&htim4);
 	//HAL_TIM_Base_Start_IT(&htim4);
+	HAL_IWDG_Refresh(&hiwdg);
 }
 //************************************************************************
 
 void SD_Logger_Main(void) {
 	char DataChar[100];
+	char ds18b20_rom_1[8] = {0x28, 0xFF, 0x31, 0x50, 0x23, 0x17, 0x03, 0xC9};
+	char ds18b20_rom_2[8] = {0x28, 0xFF, 0x55, 0x64, 0x4C, 0x04, 0x00, 0x20};
+
 	if (time_count_update_flag == 1) {
-		//HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+		HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+		HAL_IWDG_Refresh(&hiwdg);
+
 		time_count_update_flag  = 0;
 		ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 		second_count_u32++;
 
+		if (second_count_u32 == SECOND-2) {
+			DS18b20_ConvertTemp_MatchROM(ds18b20_rom_1);
+			DS18b20_ConvertTemp_MatchROM(ds18b20_rom_2);
+			//DS18b20_Print_serial_number(&huart1);
+		}
+
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
-			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
 
-			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
-			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
+			//int temp_i = DS18b20_Get_Temp_SkipROM();	// -6*16 ->  Error
 
-			//ds3231_PrintTime(&TimeSt, &huart1);
-			//ds3231_PrintDate(&DateSt, &huart1);
+			int temp_1_i = DS18b20_Get_temp_MatchROM(ds18b20_rom_1);
+			//float temp_1_fl = (float)temp_1_i / 1600.0;
+			int temp_2_i = DS18b20_Get_temp_MatchROM(ds18b20_rom_2);
+			//float temp_2_fl = (float)temp_2_i / 1600.0;
+			//sprintf(DataChar,"%.03f(%d) %.03f(%d) ", temp_1_fl, temp_1_i/16, temp_2_fl, temp_2_i/16);
+			//HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
-			snprintf(DataChar, 30,"%04d\t%02d\t%02d\t%02d\t%02d\t%02d\t%04d\r\n",
+			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);			//ds3231_PrintTime(&TimeSt, &huart1);
+			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);			//ds3231_PrintDate(&DateSt, &huart1);
+
+			snprintf(DataChar, 40,"%04d\t%02d\t%02d\t%02d\t%02d\t%02d\t%04d\t%04d\t%04d\r\n",
 					(int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date,
 					(int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds,
-					(int)(100000*DateSt.Year + 10000*DateSt.Month + 10000*DateSt.Date + 10000*TimeSt.Hours + 100*TimeSt.Minutes + TimeSt.Seconds));
+					(int)(100000*DateSt.Year + 10000*DateSt.Month + 10000*DateSt.Date + 10000*TimeSt.Hours + 100*TimeSt.Minutes + TimeSt.Seconds),
+					temp_1_i/16, temp_2_i/16);
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
 			fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
@@ -156,13 +176,13 @@ void SD_Logger_Main(void) {
 				f_printf(&USERFile, "%s", DataChar);	/* Write to file */
 				uint32_t file_size_u32 = f_size(&USERFile);
 				f_close(&USERFile);	/* Close file */
-				sprintf(DataChar,"write_SD - Ok; file_size=%d; ", (int)file_size_u32);
+				sprintf(DataChar,"SD_wr Ok; size=%d; ", (int)file_size_u32);
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			} else {
-				sprintf(DataChar,"write_SD - Error; ");
+				sprintf(DataChar,"SD_wr Err; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
-			HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
+			//HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
 	}
 
@@ -183,10 +203,11 @@ void SD_Logger_Main(void) {
 			}
 			f_close(&USERFile);
 		} else {
-			sprintf(DataChar,"FR - Fail;");
+			sprintf(DataChar,"\tFR - Fail;");
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 		}
 
+		HAL_Delay(999);
 		sprintf(DataChar,"\r\n\t...download finish.\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);

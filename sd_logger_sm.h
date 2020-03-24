@@ -33,11 +33,12 @@
 	#include "spi.h"
 	#include "SD_Logger_f103_config.h"
 	//#include "tim.h"
-	//#include "iwdg.h"
 	//#include "ringbuffer_dma.h"
 	#include "ds3231_sm.h"
 	#include "i2c.h"
 	#include "rtc.h"
+	#include "iwdg.h"
+	#include "ds18b20_sm.h"
 
 /*
 **************************************************************************
