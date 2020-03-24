@@ -138,9 +138,20 @@ void SD_Logger_Main(void) {
 		ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 		second_count_u32++;
 
+		if (second_count_u32 == SECOND-2) {
+			DS18b20_ConvertTemp_SkipROM();
+			sprintf(DataChar,"Convert temp... ");
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		}
+
+
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
-			//HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, RESET);
+
+			int temp_i = DS18b20_Get_Temp_SkipROM();
+			float temp_fl = (float)temp_i / 1600.0;
+			sprintf(DataChar,"fl: %.03f; t: %d\r\n", temp_fl, temp_i/16);
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
 			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);
 			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);
