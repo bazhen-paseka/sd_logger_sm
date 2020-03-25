@@ -70,6 +70,9 @@
 
 		int ds18b20_temp_int[2] ;
 
+		#define FILE_NAME_SIZE 			 15
+		char file_name_char[FILE_NAME_SIZE];
+
 /*
 **************************************************************************
 *                        LOCAL FUNCTION PROTOTYPES
@@ -188,20 +191,31 @@ void SD_Logger_Main(void) {
 					ds18b20_temp_int[0], ds18b20_temp_int[1]);
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
-			fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
+			sprintf(file_name_char,"%02d%02d%02d%02d.txt",(int)DateSt.Month, (int)DateSt.Date, (int)TimeSt.Hours, (int)TimeSt.Minutes);		 // (int)DateSt.Year,
+			int len = strlen(file_name_char) + 1;
+			char PathString[len];
+			snprintf(PathString, len,"%s", file_name_char);
+			TCHAR *f_tmp = file_name_char;
+			char *s_tmp = PathString;
+			while(*s_tmp) {
+				*f_tmp++ = (TCHAR)*s_tmp++;
+			}
+			*f_tmp = 0;
+			HAL_UART_Transmit(&huart1, (uint8_t *)file_name_char, strlen(file_name_char), 100);
+
+			fres = f_open(&USERFile, file_name_char, FA_OPEN_ALWAYS | FA_WRITE);
 			fres += f_lseek(&USERFile, f_size(&USERFile));
 
 			if (fres == FR_OK) 	{
 				f_printf(&USERFile, "%s", DataChar);	/* Write to file */
 				uint32_t file_size_u32 = f_size(&USERFile);
 				f_close(&USERFile);	/* Close file */
-				sprintf(DataChar,"SD_wr Ok; size=%d; ", (int)file_size_u32);
+				sprintf(DataChar," SD_wr-Ok; size=%d; ", (int)file_size_u32);
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			} else {
-				sprintf(DataChar,"SD_wr Err; ");
+				sprintf(DataChar," SD_wr-Err; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
-			//HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
 	}
 
@@ -211,7 +225,7 @@ void SD_Logger_Main(void) {
 		sprintf(DataChar,"Download data to port...\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
-		fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_EXISTING | FA_READ);
+		fres = f_open(&USERFile, file_name_char, FA_OPEN_EXISTING | FA_READ);
 		if (fres == FR_OK) {
 			sprintf(DataChar,"FR - Ok;\r\n");
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
