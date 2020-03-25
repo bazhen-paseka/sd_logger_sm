@@ -158,11 +158,11 @@ void SD_Logger_Main(void) {
 		ds3231_GetDate(ADR_I2C_DS3231, &DateSt);			//ds3231_PrintDate(&DateSt, &huart1);
 
 		LCD1602_Cursor_Return(&h1_lcd1602_fc113);
-		sprintf(DataChar,"%04d/%02d/%02d %02d,%02d", (int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date, ds18b20_temp_int[0]/1600, (ds18b20_temp_int[0]/16)%100);
+		sprintf(DataChar,"%04d/%02d/%02d %02d,%02d", (int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date, ds18b20_temp_int[0]/100, ds18b20_temp_int[0]%100);
 		LCD1602_Print_Line(&h1_lcd1602_fc113, DataChar, strlen(DataChar));
 
 		LCD1602_Cursor_Shift_Right(&h1_lcd1602_fc113, 2);
-		sprintf(DataChar,"%02d:%02d:%02d %02d,%02d", (int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds, ds18b20_temp_int[1]/1600, (ds18b20_temp_int[1]/16)%100);
+		sprintf(DataChar,"%02d:%02d:%02d %02d,%02d", (int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds, ds18b20_temp_int[1]/100, ds18b20_temp_int[1]%100);
 		LCD1602_Print_Line(&h1_lcd1602_fc113, DataChar, strlen(DataChar));
 
 		if (second_count_u32 == SECOND-2) {
@@ -174,12 +174,10 @@ void SD_Logger_Main(void) {
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
 
-			//int temp_i = DS18b20_Get_Temp_SkipROM();	// -6*16 ->  Error
-
-			ds18b20_temp_int[0] = DS18b20_Get_temp_MatchROM(ds18b20_rom_1);
-			//float temp_1_fl = (float)ds18b20_temp_1_int / 1600.0;
-			ds18b20_temp_int[1] = DS18b20_Get_temp_MatchROM(ds18b20_rom_2);
-			//float temp_2_fl = (float)de18b20_temp_int[2] / 1600.0;
+			ds18b20_temp_int[0] = DS18b20_Get_temp_MatchROM(ds18b20_rom_1) / 16;
+			//float temp_1_fl = (float)ds18b20_temp_int[0] / 100.0;
+			ds18b20_temp_int[1] = DS18b20_Get_temp_MatchROM(ds18b20_rom_2) / 16;
+			//float temp_2_fl = (float)de18b20_temp_int[1] / 100.0;
 			//sprintf(DataChar,"%.03f(%d) %.03f(%d) ", temp_1_fl, ds18b20_temp_1_int/16, temp_2_fl, de18b20_temp_int[2]/16);
 			//HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
@@ -187,7 +185,7 @@ void SD_Logger_Main(void) {
 					(int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date,
 					(int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds,
 					(int)(100000*DateSt.Year + 10000*DateSt.Month + 10000*DateSt.Date + 10000*TimeSt.Hours + 100*TimeSt.Minutes + TimeSt.Seconds),
-					ds18b20_temp_int[0]/16, ds18b20_temp_int[1]/16);
+					ds18b20_temp_int[0], ds18b20_temp_int[1]);
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
 			fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
