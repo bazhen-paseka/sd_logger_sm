@@ -73,6 +73,30 @@
 		#define FILE_NAME_SIZE 			 15
 		char file_name_char[FILE_NAME_SIZE];
 
+
+		uint8_t dataOut[32];	/* Data received and data for send */
+		uint8_t  dataIn[32];
+		NRF24L01_Transmit_Status_t transmissionStatus;	/* NRF transmission status */
+
+	#ifdef MASTER
+		uint8_t MyAddress[] = { 0, 0, 0, 0, 0x10 };	/* My address */
+		uint8_t Tx0Address[] = { 0, 0, 0, 0, 0x21 };	/* Other end address */
+		uint8_t Tx1Address[] = { 0, 0, 0, 0, 0x22 };	/* Other end address */
+	#endif
+
+	#ifdef SLAVE_21
+		uint8_t MyAddress[] = { 0, 0, 0, 0, 0x21 };	/* My address */
+		uint8_t TxAddress[] = { 0, 0, 0, 0, 0x10 };	/* Other end address */
+	#endif
+
+	#ifdef SLAVE_22
+		uint8_t MyAddress[] = { 0, 0, 0, 0, 0x22 };	/* My address */
+		uint8_t TxAddress[] = { 0, 0, 0, 0, 0x10 };	/* Other end address */
+	#endif
+		char DataChar[100];
+
+
+
 /*
 **************************************************************************
 *                        LOCAL FUNCTION PROTOTYPES
@@ -133,6 +157,15 @@ void SD_Logger_Init(void) {
 	} while ((fres !=0) && (try_u8 < 3));
 
 	LCD1602_Clear(&h1_lcd1602_fc113);
+
+
+
+	NRF24L01_Init(&hspi2, MY_CHANNEL, 32);
+	NRF24L01_SetRF(NRF24L01_DataRate_250k, NRF24L01_OutputPower_M6dBm);	/* Set 250kBps data rate and -6dBm output power */
+	NRF24L01_SetMyAddress(MyAddress);	/* Set my address, 5 bytes */
+	//NRF24L01_SetTxAddress(TxAddress);	/* Set TX address, 5 bytes */
+
+
 
 	//ds3231_Alarm1_SetSeconds(ADR_I2C_DS3231, 0x00);
 	ds3231_Alarm1_SetEverySeconds(ADR_I2C_DS3231);
