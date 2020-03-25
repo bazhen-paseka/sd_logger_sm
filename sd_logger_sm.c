@@ -62,6 +62,17 @@
 		RTC_TimeTypeDef TimeSt;
 		RTC_DateTypeDef DateSt;
 
+		lcd1602_fc113_struct h1_lcd1602_fc113 =
+		{
+			.i2c = &hi2c1,
+			.device_i2c_address = ADR_I2C_FC113
+		};
+
+		int ds18b20_temp_int[2] ;
+
+		#define FILE_NAME_SIZE 			 15
+		char file_name_char[FILE_NAME_SIZE];
+
 /*
 **************************************************************************
 *                        LOCAL FUNCTION PROTOTYPES
@@ -87,6 +98,9 @@ void SD_Logger_Init(void) {
 
 	I2Cdev_init(&hi2c1);
 	I2C_ScanBusFlow(&hi2c1, &huart1);
+
+	LCD1602_Init(&h1_lcd1602_fc113);
+	I2C_ScanBus_to_LCD1602(&h1_lcd1602_fc113);
 
 #if (SET_RTC_TIM_AND_DATE == 1)
 	Set_Date_and_Time_to_DS3231(0x20, 0x03, 0x23, 0x15, 0x10, 0x00);
@@ -118,6 +132,8 @@ void SD_Logger_Init(void) {
 		}
 	} while ((fres !=0) && (try_u8 < 3));
 
+	LCD1602_Clear(&h1_lcd1602_fc113);
+
 	//ds3231_Alarm1_SetSeconds(ADR_I2C_DS3231, 0x00);
 	ds3231_Alarm1_SetEverySeconds(ADR_I2C_DS3231);
 	ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
@@ -141,6 +157,17 @@ void SD_Logger_Main(void) {
 		ds3231_Alarm1_ClearStatusBit(ADR_I2C_DS3231);
 		second_count_u32++;
 
+		ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);			//ds3231_PrintTime(&TimeSt, &huart1);
+		ds3231_GetDate(ADR_I2C_DS3231, &DateSt);			//ds3231_PrintDate(&DateSt, &huart1);
+
+		LCD1602_Cursor_Return(&h1_lcd1602_fc113);
+		sprintf(DataChar,"%04d/%02d/%02d %02d,%02d", (int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date, ds18b20_temp_int[0]/100, ds18b20_temp_int[0]%100);
+		LCD1602_Print_Line(&h1_lcd1602_fc113, DataChar, strlen(DataChar));
+
+		LCD1602_Cursor_Shift_Right(&h1_lcd1602_fc113, 2);
+		sprintf(DataChar,"%02d:%02d:%02d %02d,%02d", (int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds, ds18b20_temp_int[1]/100, ds18b20_temp_int[1]%100);
+		LCD1602_Print_Line(&h1_lcd1602_fc113, DataChar, strlen(DataChar));
+
 		if (second_count_u32 == SECOND-2) {
 			DS18b20_ConvertTemp_MatchROM(ds18b20_rom_1);
 			DS18b20_ConvertTemp_MatchROM(ds18b20_rom_2);
@@ -150,39 +177,45 @@ void SD_Logger_Main(void) {
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
 
-			//int temp_i = DS18b20_Get_Temp_SkipROM();	// -6*16 ->  Error
-
-			int temp_1_i = DS18b20_Get_temp_MatchROM(ds18b20_rom_1);
-			//float temp_1_fl = (float)temp_1_i / 1600.0;
-			int temp_2_i = DS18b20_Get_temp_MatchROM(ds18b20_rom_2);
-			//float temp_2_fl = (float)temp_2_i / 1600.0;
-			//sprintf(DataChar,"%.03f(%d) %.03f(%d) ", temp_1_fl, temp_1_i/16, temp_2_fl, temp_2_i/16);
+			ds18b20_temp_int[0] = DS18b20_Get_temp_MatchROM(ds18b20_rom_1) / 16;
+			//float temp_1_fl = (float)ds18b20_temp_int[0] / 100.0;
+			ds18b20_temp_int[1] = DS18b20_Get_temp_MatchROM(ds18b20_rom_2) / 16;
+			//float temp_2_fl = (float)de18b20_temp_int[1] / 100.0;
+			//sprintf(DataChar,"%.03f(%d) %.03f(%d) ", temp_1_fl, ds18b20_temp_1_int/16, temp_2_fl, de18b20_temp_int[2]/16);
 			//HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
-
-			ds3231_GetTime(ADR_I2C_DS3231, &TimeSt);			//ds3231_PrintTime(&TimeSt, &huart1);
-			ds3231_GetDate(ADR_I2C_DS3231, &DateSt);			//ds3231_PrintDate(&DateSt, &huart1);
 
 			snprintf(DataChar, 40,"%04d\t%02d\t%02d\t%02d\t%02d\t%02d\t%04d\t%04d\t%04d\r\n",
 					(int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date,
 					(int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds,
 					(int)(100000*DateSt.Year + 10000*DateSt.Month + 10000*DateSt.Date + 10000*TimeSt.Hours + 100*TimeSt.Minutes + TimeSt.Seconds),
-					temp_1_i/16, temp_2_i/16);
+					ds18b20_temp_int[0], ds18b20_temp_int[1]);
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
-			fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_ALWAYS | FA_WRITE);
+			sprintf(file_name_char,"%02d%02d%02d%02d.txt",(int)DateSt.Month, (int)DateSt.Date, (int)TimeSt.Hours, (int)TimeSt.Minutes);		 // (int)DateSt.Year,
+			int len = strlen(file_name_char) + 1;
+			char PathString[len];
+			snprintf(PathString, len,"%s", file_name_char);
+			TCHAR *f_tmp = file_name_char;
+			char *s_tmp = PathString;
+			while(*s_tmp) {
+				*f_tmp++ = (TCHAR)*s_tmp++;
+			}
+			*f_tmp = 0;
+			HAL_UART_Transmit(&huart1, (uint8_t *)file_name_char, strlen(file_name_char), 100);
+
+			fres = f_open(&USERFile, file_name_char, FA_OPEN_ALWAYS | FA_WRITE);
 			fres += f_lseek(&USERFile, f_size(&USERFile));
 
 			if (fres == FR_OK) 	{
 				f_printf(&USERFile, "%s", DataChar);	/* Write to file */
 				uint32_t file_size_u32 = f_size(&USERFile);
 				f_close(&USERFile);	/* Close file */
-				sprintf(DataChar,"SD_wr Ok; size=%d; ", (int)file_size_u32);
+				sprintf(DataChar," SD_wr-Ok; size=%d; ", (int)file_size_u32);
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			} else {
-				sprintf(DataChar,"SD_wr Err; ");
+				sprintf(DataChar," SD_wr-Err; ");
 				HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 			}
-			//HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, SET);
 		}
 	}
 
@@ -192,7 +225,7 @@ void SD_Logger_Main(void) {
 		sprintf(DataChar,"Download data to port...\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
 
-		fres = f_open(&USERFile, "sd_log.txt", FA_OPEN_EXISTING | FA_READ);
+		fres = f_open(&USERFile, file_name_char, FA_OPEN_EXISTING | FA_READ);
 		if (fres == FR_OK) {
 			sprintf(DataChar,"FR - Ok;\r\n");
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
