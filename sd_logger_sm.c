@@ -223,8 +223,40 @@ void SD_Logger_Main(void) {
 			} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 			uint32_t sendTime_u32 = HAL_GetTick();
 
+			NRF24L01_PowerUpRx();	/* Go back to RX mode */
+
 			sprintf(DataChar,"TX_time: %d\r\n", (int)(sendTime_u32 - startTime_u32) );
 			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+
+
+					/* Wait received data, wait max 100ms, if time is larger, then data were probably lost */
+					while (!NRF24L01_DataReady() && (HAL_GetTick() - sendTime_u32) < 1000);
+					sprintf(DataChar,"RX: ");
+					HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+					NRF24L01_GetData(dataIn);				/* Get data from NRF2L01+ */
+					sprintf(DataChar,"%s\r\n", dataIn);
+					HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+					sprintf(DataChar,"Ping: %d ms; ", (int)(HAL_GetTick() - sendTime_u32));				/* Show ping time */
+					HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+
+					sprintf(DataChar,"Status: ");
+					HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+					if (transmissionStatus == NRF24L01_Transmit_Status_Ok) {	/* Check transmit status */
+						sprintf(DataChar,"OK\r\n");					/* Transmit went OK */
+						HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+					} else if (transmissionStatus == NRF24L01_Transmit_Status_Lost) {
+						sprintf(DataChar,"LOST\r\n");		/* Message was LOST */
+						HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+					} else {
+						/* This should never happen */
+						sprintf(DataChar,"Sending data: \r\n");
+						HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+					}
+
+
+
+
+
 		}
 //-------------------------------------------------------------------------------------------------
 
