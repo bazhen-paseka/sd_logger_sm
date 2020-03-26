@@ -194,11 +194,11 @@ void SD_Logger_Main(void) {
 		ds3231_GetDate(ADR_I2C_DS3231, &DateSt);			//ds3231_PrintDate(&DateSt, &huart1);
 
 		LCD1602_Cursor_Return(&h1_lcd1602_fc113);
-		sprintf(DataChar,"%04d/%02d/%02d %02d,%02d", (int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date, ds18b20_temp_int[0]/100, ds18b20_temp_int[0]%100);
+		sprintf(DataChar,"  %02d:%02d:%02d %02d,%02d", (int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds, ds18b20_temp_int[1]/100, ds18b20_temp_int[0]%100);
 		LCD1602_Print_Line(&h1_lcd1602_fc113, DataChar, strlen(DataChar));
 
-		LCD1602_Cursor_Shift_Right(&h1_lcd1602_fc113, 2);
-		sprintf(DataChar,"%02d:%02d:%02d %02d,%02d", (int)TimeSt.Hours, (int)TimeSt.Minutes, (int)TimeSt.Seconds, ds18b20_temp_int[1]/100, ds18b20_temp_int[1]%100);
+		//LCD1602_Cursor_Shift_Right(&h1_lcd1602_fc113, 2);
+		sprintf(DataChar,"%04d/%02d/%02d %02d,%02d", (int)(DateSt.Year + 2000), (int)DateSt.Month, (int)DateSt.Date, ds18b20_temp_int[0]/100, ds18b20_temp_int[1]%100);
 		LCD1602_Print_Line(&h1_lcd1602_fc113, DataChar, strlen(DataChar));
 
 		if (second_count_u32 == SECOND-2) {
@@ -206,6 +206,27 @@ void SD_Logger_Main(void) {
 			DS18b20_ConvertTemp_MatchROM(ds18b20_rom_2);
 			//DS18b20_Print_serial_number(&huart1);
 		}
+
+//-------------------------------------------------------------------------------------------------
+		if (second_count_u32 == SECOND-1) {
+			uint32_t startTime_u32 = HAL_GetTick();
+			NRF24L01_SetTxAddress(Tx0Address);	/* Set TX address, 5 bytes */
+			sprintf((char *) dataOut, "CurTemp=%d", ds18b20_temp_int[0]);
+			sprintf(DataChar,"NRF24L01_send: %s; ", dataOut);
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+			/* Transmit data, goes automatically to TX mode */
+			NRF24L01_Transmit(dataOut);
+			/* Wait for data to be sent */
+			do {
+				/* Get transmission status */
+				transmissionStatus = NRF24L01_GetTransmissionStatus();
+			} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+			uint32_t sendTime_u32 = HAL_GetTick();
+
+			sprintf(DataChar,"TX_time: %d\r\n", (int)(sendTime_u32 - startTime_u32) );
+			HAL_UART_Transmit(&huart1, (uint8_t *)DataChar, strlen(DataChar), 100);
+		}
+//-------------------------------------------------------------------------------------------------
 
 		if (second_count_u32 >= SECOND) {
 			second_count_u32  = 0;
